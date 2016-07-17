@@ -1,0 +1,20 @@
+{
+  "name": "fmg",
+  "version": "0.0.0",
+  "description": "web file manager",
+  "dependencies": {
+    "express": "latest"
+  },
+  "author": "abbas",
+  "main": "index.js",
+  "devDependencies": {
+    "babel-core": "^6.10.4",
+    "babel-loader": "^6.2.4",
+    "babel-preset-react": "^6.11.1",
+    "webpack": "^1.13.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "ISC"
+}

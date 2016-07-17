@@ -1,0 +1,9 @@
+{
+    "name": "fmg",
+    "version": "0.0.0",
+    "description": "web file manager",
+    "dependencies": {
+	"express": "latest"
+    },
+    "author": "abbas",
+}
