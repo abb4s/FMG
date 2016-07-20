@@ -5,7 +5,7 @@
   var FFile = require('./FFile.js');
   var Breadcrumb=require('./BreadCrumb.js');
   var Menu =require('./Menu.js');
-
+  var UploadModal=require('./UploadModal')
 
 
 
@@ -22,30 +22,43 @@
         },
         openFile : function(i){
           if(this.state.files[i].ext== "folder"){
-            this.changePath(this.state.currentPath.join("/")+"/"+this.state.files[i].name);
+            var _do= function (path){
+              this.state.currentPath.push(path);
+            }.bind(this);
+            this.changePath(/*this.state.currentPath.join("/")+"/"+*/this.state.files[i].name,_do);
           }
           else {
             alert("hey it is not directory !!");
           }
         },
         openBreadCrumbs: function(i){
-          var thePath="";
+          /*var thePath="";
           for(var j=0 ; j<i ; j++){
             thePath+=this.state.currentPath[j]+"/"
           }
           thePath+=this.state.currentPath[i];
-          console.log("Breadcrumb path : " + thePath + "\n");
-          this.changePath(thePath);
+          console.log("Breadcrumb path : " + thePath + "\n");*/
+          var _do= function (){
+            this.state.currentPath=this.state.currentPath.slice(0,i+1);
+          }.bind(this);
+          this.changePath(this.state.currentPath[i],_do);
         },
-        changePath : function(path){
+
+        refresh : function (){
+          var _do = function(){};
+          this.changePath(this.state.currentPath[this.state.currentPath.length-1],_do);
+        },
+        changePath : function(path,_doAfterSucces){
           $.ajax({
-            url: "http://127.0.0.1:3000/" + path  ,
+            url: "http://127.0.0.1:3000/browse/" + path  ,
             dataType: 'json',
             cache: false,
             success: function(data) {
+
+              _doAfterSucces(path);
               this.setState({
                 files: data,
-                currentPath : path.split("/"),
+                currentPath : this.state.currentPath,
               });
               console.log("the current path now :"+this.state.currentPath);
             }.bind(this),
@@ -56,7 +69,7 @@
         },
         componentDidMount: function() {
           $.ajax({
-            url: "http://127.0.0.1:3000/root/",
+            url: "http://127.0.0.1:3000/browse/root/",
             dataType: 'json',
             cache: false,
             success: function(data) {
@@ -67,10 +80,39 @@
             }.bind(this)
           });
         },
-        mkdir : function(){
+        mkdir : function(folderName){
           var thePath= this.state.currentPath[this.state.currentPath.length-1];
           $.ajax({
-            url: "http://127.0.0.1:3000/mkdir/"+ thePath +"-newfolder",
+            url: "http://127.0.0.1:3000/mkdir/"+ thePath +"-"+folderName,
+            cache: false,
+            success: function(data) {
+              console.log(data);
+              this.refresh();
+            }.bind(this),
+            error: function(xhr, status, err) {
+              console.error("http://127.0.0.1:3000/", status, err.toString());
+            }.bind(this)
+          });
+        },
+        showUpload : function(){
+          this.refs.UploadModal.open();
+        },
+        delete : function(i,ext){
+          var dataToSent={
+            ext : ext,
+          };
+          if(ext=="folder"){
+            dataToSent.folderName = this.state.files[i];
+          }
+          else{
+            dataToSent.folderName=this.state.currentPath[this.state.currentPath.length-1];
+            dataToSent.fileName=this.state.files[i].name;
+          }
+          $.ajax({
+            url: "http://127.0.0.1:3000/delete/"  ,
+
+            type : "POST",
+            data : dataToSent,
             cache: false,
             success: function(data) {
               console.log(data);
@@ -79,6 +121,7 @@
               console.error("http://127.0.0.1:3000/", status, err.toString());
             }.bind(this)
           });
+
         },
         render: function(){
 
@@ -94,7 +137,7 @@
                     }.bind(this))
                   }
                 </div>
-                <Menu mkdir={this.mkdir}/>
+                <Menu fmg={this}/>
                 <div className="files">
                   {
                     this.state.files.map(function(item,i){
@@ -104,7 +147,7 @@
                     }.bind(this))
                   }
                 </div>
-
+                <UploadModal ref="UploadModal" path={this.state.currentPath[this.state.currentPath.length-1]}/>
               </div>
 
 

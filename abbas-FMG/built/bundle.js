@@ -48,7 +48,8 @@
 	__webpack_require__(2);
 	__webpack_require__(3);
 	__webpack_require__(4);
-	module.exports = __webpack_require__(5);
+	__webpack_require__(5);
+	module.exports = __webpack_require__(6);
 
 
 /***/ },
@@ -85,6 +86,9 @@
 	  open: function () {
 	    this.props.fmg.openFile(this.props.index);
 	  },
+	  delete: function () {
+	    this.props.fmg.delete(this.props.index, this.props.ext);
+	  },
 	  render: function () {
 	    return React.createElement(
 	      "div",
@@ -92,7 +96,13 @@
 	      React.createElement(Icon, { ext: this.props.ext }),
 	      this.props.fileName,
 	      ",",
-	      this.props.author
+	      this.props.author,
+	      ",",
+	      React.createElement(
+	        "a",
+	        { href: "#", onClick: this.delete },
+	        " delete"
+	      )
 	    );
 	  }
 	});
@@ -127,20 +137,85 @@
 /* 4 */
 /***/ function(module, exports) {
 
+	var UploadModal = React.createClass({
+	  displayName: 'UploadModal',
+
+
+	  open: function () {
+	    var modal = document.getElementById('uploadModal');
+	    modal.style.display = "block";
+	  },
+	  close: function () {
+	    var modal = document.getElementById('uploadModal');
+	    modal.style.display = "none";
+	  },
+	  render: function () {
+	    return React.createElement(
+	      'div',
+	      { id: 'uploadModal', className: 'modal' },
+	      React.createElement(
+	        'div',
+	        { className: 'modal-content' },
+	        React.createElement(
+	          'span',
+	          { className: 'close', onClick: this.close },
+	          '×'
+	        ),
+	        React.createElement(
+	          'p',
+	          null,
+	          React.createElement(
+	            'h3',
+	            null,
+	            'Upload file '
+	          ),
+	          React.createElement(
+	            'form',
+	            { action: "/upload/" + this.props.path, method: 'post', encType: 'multipart/form-data' },
+	            React.createElement('input', { type: 'file', name: 'theFile' }),
+	            React.createElement('br', null),
+	            React.createElement('br', null),
+	            React.createElement('input', { type: 'submit', value: 'upload' })
+	          )
+	        )
+	      )
+	    );
+	  }
+	});
+
+	module.exports = UploadModal;
+
+/***/ },
+/* 5 */
+/***/ function(module, exports) {
+
 	var Menu = React.createClass({
 	  displayName: "Menu",
 
+
 	  mkdir: function () {
-	    this.props.mkdir();
+	    var folderName = prompt("Please enter folderName : ", "newFolder");
+	    if (folderName != null) {
+	      this.props.fmg.mkdir(folderName);
+	    }
+	  },
+	  upload: function () {
+	    this.props.fmg.showUpload();
 	  },
 	  render: function () {
+
 	    return React.createElement(
 	      "div",
 	      { className: "menu" },
 	      React.createElement(
 	        "a",
 	        { href: "#", onClick: this.mkdir },
-	        "mkdir"
+	        "mkdir,"
+	      ),
+	      React.createElement(
+	        "a",
+	        { href: "#", onClick: this.upload },
+	        "upload file,"
 	      )
 	    );
 	  }
@@ -149,14 +224,15 @@
 	module.exports = Menu;
 
 /***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
 
 	var FFile = __webpack_require__(2);
 	var Breadcrumb = __webpack_require__(3);
-	var Menu = __webpack_require__(4);
+	var Menu = __webpack_require__(5);
+	var UploadModal = __webpack_require__(4);
 
 	var Fmg = React.createClass({
 	  displayName: 'Fmg',
@@ -169,29 +245,42 @@
 	  },
 	  openFile: function (i) {
 	    if (this.state.files[i].ext == "folder") {
-	      this.changePath(this.state.currentPath.join("/") + "/" + this.state.files[i].name);
+	      var _do = function (path) {
+	        this.state.currentPath.push(path);
+	      }.bind(this);
+	      this.changePath( /*this.state.currentPath.join("/")+"/"+*/this.state.files[i].name, _do);
 	    } else {
 	      alert("hey it is not directory !!");
 	    }
 	  },
 	  openBreadCrumbs: function (i) {
-	    var thePath = "";
-	    for (var j = 0; j < i; j++) {
-	      thePath += this.state.currentPath[j] + "/";
+	    /*var thePath="";
+	    for(var j=0 ; j<i ; j++){
+	      thePath+=this.state.currentPath[j]+"/"
 	    }
-	    thePath += this.state.currentPath[i];
-	    console.log("Breadcrumb path : " + thePath + "\n");
-	    this.changePath(thePath);
+	    thePath+=this.state.currentPath[i];
+	    console.log("Breadcrumb path : " + thePath + "\n");*/
+	    var _do = function () {
+	      this.state.currentPath = this.state.currentPath.slice(0, i + 1);
+	    }.bind(this);
+	    this.changePath(this.state.currentPath[i], _do);
 	  },
-	  changePath: function (path) {
+
+	  refresh: function () {
+	    var _do = function () {};
+	    this.changePath(this.state.currentPath[this.state.currentPath.length - 1], _do);
+	  },
+	  changePath: function (path, _doAfterSucces) {
 	    $.ajax({
-	      url: "http://127.0.0.1:3000/" + path,
+	      url: "http://127.0.0.1:3000/browse/" + path,
 	      dataType: 'json',
 	      cache: false,
 	      success: function (data) {
+
+	        _doAfterSucces(path);
 	        this.setState({
 	          files: data,
-	          currentPath: path.split("/")
+	          currentPath: this.state.currentPath
 	        });
 	        console.log("the current path now :" + this.state.currentPath);
 	      }.bind(this),
@@ -202,7 +291,7 @@
 	  },
 	  componentDidMount: function () {
 	    $.ajax({
-	      url: "http://127.0.0.1:3000/root/",
+	      url: "http://127.0.0.1:3000/browse/root/",
 	      dataType: 'json',
 	      cache: false,
 	      success: function (data) {
@@ -213,10 +302,38 @@
 	      }.bind(this)
 	    });
 	  },
-	  mkdir: function () {
+	  mkdir: function (folderName) {
 	    var thePath = this.state.currentPath[this.state.currentPath.length - 1];
 	    $.ajax({
-	      url: "http://127.0.0.1:3000/mkdir/" + thePath + "-newfolder",
+	      url: "http://127.0.0.1:3000/mkdir/" + thePath + "-" + folderName,
+	      cache: false,
+	      success: function (data) {
+	        console.log(data);
+	        this.refresh();
+	      }.bind(this),
+	      error: function (xhr, status, err) {
+	        console.error("http://127.0.0.1:3000/", status, err.toString());
+	      }.bind(this)
+	    });
+	  },
+	  showUpload: function () {
+	    this.refs.UploadModal.open();
+	  },
+	  delete: function (i, ext) {
+	    var dataToSent = {
+	      ext: ext
+	    };
+	    if (ext == "folder") {
+	      dataToSent.folderName = this.state.files[i];
+	    } else {
+	      dataToSent.folderName = this.state.currentPath[this.state.currentPath.length - 1];
+	      dataToSent.fileName = this.state.files[i].name;
+	    }
+	    $.ajax({
+	      url: "http://127.0.0.1:3000/delete/",
+
+	      type: "POST",
+	      data: dataToSent,
 	      cache: false,
 	      success: function (data) {
 	        console.log(data);
@@ -238,14 +355,15 @@
 	          return React.createElement(Breadcrumb, { key: i, index: i, fmg: this, text: item });
 	        }.bind(this))
 	      ),
-	      React.createElement(Menu, { mkdir: this.mkdir }),
+	      React.createElement(Menu, { fmg: this }),
 	      React.createElement(
 	        'div',
 	        { className: 'files' },
 	        this.state.files.map(function (item, i) {
 	          return React.createElement(FFile, { key: i, index: i, fileName: item.name, author: item.owner, ext: item.ext, fmg: this });
 	        }.bind(this))
-	      )
+	      ),
+	      React.createElement(UploadModal, { ref: 'UploadModal', path: this.state.currentPath[this.state.currentPath.length - 1] })
 	    );
 	  }
 	});
